@@ -17,7 +17,7 @@ OCEANOBJS = AI_kinds.o OCEAN_mpi.o OCEAN_system.o OCEAN_bloch.o OCEAN_obf.o OCEA
             OCEAN_get_rho.o optim.o OCEAN_hyb_louie_levine.o OCEAN_ladder.o \
 						OCEAN_pfy.o OCEAN_rixs_holder.o OCEAN_corewidths.o OCEAN_action.o \
 						OCEAN_driver.o OCEAN_gmres.o OCEAN_filenames.o $(FFT_WRAPPER_OBJS) $(CAIN_OBJS) \
-            OCEAN_WRR.o ../SCREEN/src/ocean_sphericalharmonics.o
+            OCEAN_WRR.o ../SCREEN/src/ocean_sphericalharmonics.o OCEAN_val_kxc.o OCEAN_val_VR.o
 
 KINDS = AI_kinds.o
 
@@ -187,6 +187,12 @@ OCEAN_filenames.o: OCEAN_filenames.f90 OCEAN_system.o
 
 OCEAN_WRR.o: OCEAN_WRR.f90 OCEAN_constants.o OCEAN_system.o OCEAN_mpi.o OCEAN_hyb_louie_levine.o
 	$(MPIFORT) $(FLAGS) -c -o OCEAN_WRR.o OCEAN_WRR.f90
+
+OCEAN_val_kxc.o: OCEAN_val_kxc.f90 OCEAN_constants.o OCEAN_system.o OCEAN_get_rho.o
+	$(MPIFORT) $(FLAGS) -c -o OCEAN_val_kxc.o OCEAN_val_kxc.f90
+
+OCEAN_val_VR.o: OCEAN_val_VR.f90 AI_kinds.o OCEAN_system.o OCEAN_val_kxc.o OCEAN_psi.o OCEAN_val_states.o
+	$(MPIFORT) $(FLAGS) -c -o OCEAN_val_VR.o OCEAN_val_VR.f90
 
 clean:
 	rm -f *.o *.mod ocean.x o_spect.x rixs_plane.x

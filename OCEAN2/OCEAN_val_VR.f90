@@ -26,7 +26,7 @@ module OCEAN_val_VR
   subroutine OCEAN_val_VR_init( sys, ierr )
     use OCEAN_system, only : o_system
     use OCEAN_val_states, only : nxpts
-    use OCEAN_kxc
+    use OCEAN_val_kxc
     !
     type(o_system), intent( in ) :: sys
     integer, intent( inout ) :: ierr
@@ -35,7 +35,7 @@ module OCEAN_val_VR
     allocate( VR(nxpts), STAT=ierr )
     if( ierr .ne. 0 ) return
 
-    call OCEAN_kxc( sys, VR, ierr )
+    call OCEAN_val_kxc_init( sys, VR, ierr )
     if( ierr .ne. 0 ) return
 
     is_init = .true.
@@ -44,7 +44,7 @@ module OCEAN_val_VR
 
   subroutine OCEAN_val_VR_clean()
     if( allocated( VR ) ) deallocate( VR )
-    is_init = .falst.
+    is_init = .false.
   end subroutine OCEAN_val_VR_clean
 
 
@@ -67,13 +67,13 @@ module OCEAN_val_VR
         cspn = min( j, sys%nspn )
         ibeta = ibeta + 1
 
-        call OCEAN_ladder_act_single( sys, psi, psi_out, ibeta, cspn, vspn, ierr )
+        call act_single( sys, psi, psi_out, ibeta, cspn, vspn, ierr )
         if( ierr .ne. 0 ) return
 
       enddo
     enddo
 
-  end subroutine OCEAN_ladder_act
+  end subroutine OCEAN_val_VR_act
 
   subroutine act_single( sys, psi, psi_out, psi_spn, cspn, vspn, ierr )
     use OCEAN_psi
@@ -91,6 +91,9 @@ module OCEAN_val_VR
     real(DP), allocatable :: re_a_mat(:,:), im_a_mat(:,:), re_b_mat(:), im_b_mat(:)
     real(DP) :: spin_prefac, minus_spin_prefac
     integer :: ik, ib, psi_con_pad
+    real(dp), parameter :: zero = 0.0_dp
+    real(dp), parameter :: one  = 1.0_dp
+    real(dp), parameter :: minusone = -1.0_dp
 
 
     spin_prefac = 1.0_DP
@@ -105,7 +108,7 @@ module OCEAN_val_VR
     re_b_mat(:) = 0.0_DP
     im_b_mat(:) = 0.0_DP
 
-    do ik = 1, nkpts
+    do ik = 1, sys%nkpts
       call DGEMM( 'N', 'N', nxpts, nbv, nbc, one, re_con( 1, 1, ik, cspn ), nxpts_pad, &
                   psi%valr( 1, ib, ik, psi_spn ), psi_con_pad, zero, re_a_mat, nxpts )
       call DGEMM( 'N', 'N', nxpts, nbv, nbc, minusone, im_con( 1, 1, ik, cspn ), nxpts_pad, &
@@ -123,7 +126,7 @@ module OCEAN_val_VR
 
         im_b_mat( : ) = im_b_mat( : ) + im_a_mat( :, ib ) * re_val( 1:nxpts, ib, ik, vspn ) &
                       - re_a_mat( :, ib ) * im_val( :, ib, ik, vspn )
-
+      enddo
     enddo
       
 
@@ -131,7 +134,7 @@ module OCEAN_val_VR
     im_b_mat(:) = im_b_mat(:) * VR(:)
 
 
-    do ik = 1, nkpt
+    do ik = 1, sys%nkpts
       do ib = 1, nbv
         re_a_mat( :, ib ) = re_b_mat( : ) * re_val( 1:nxpts, ib, ik, vspn ) &
                           - im_b_mat( : ) * im_val( 1:nxpts, ib, ik, vspn )
