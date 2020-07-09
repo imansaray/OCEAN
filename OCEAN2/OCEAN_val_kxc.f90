@@ -46,34 +46,51 @@ module OCEAN_val_kxc
   subroutine alda( sys, rho, VR, ierr )
     use OCEAN_system, only : o_system
     use OCEAN_val_states, only : nxpts, startx
-    use OCEAN_mpi, only : myid
+    use OCEAN_mpi, only : myid, root, comm, MPI_IN_PLACE, MPI_DOUBLE_PRECISION, MPI_SUM
     type(o_system), intent( in ) :: sys
     real(DP), intent( in ) :: rho(:)
     real(DP), intent( out ) :: VR(:)
     integer, intent( inout ) :: ierr
 
 
-    real(DP) :: prefac, localDen, n, dn, ex, ec, val(-2:2)
+    real(DP) :: prefac, localDen, n, dn, ex, ec, val(-2:2), totalDen, totalDen2, ux1, ux2, uc1, uc2 
     integer :: i, j
 
     prefac = 1.0_DP / ( sys%nkpts * sys%celvol )
 
+    totalDen = 0.0_DP
+    totalDen2 = sum( rho(:) ) / real(sys%nxpts, DP ) * sys%celvol
+    write(6,*) nxpts, sys%nxpts
+
+    if( myid .eq. root ) then
+      open(unit=99,file='kxc.txt' )
+    endif
 
     do i = 1, nxpts
       localDen = rho( i + startx - 1 )
+      totalDen = totalDen + localDen
       
       dn = 0.01_DP * localDen
       do j = -2, 2
         n = localDen + real( j, DP ) * dn
 
-        call mod_cacorr( n, ex, ec )
+!        call mod_cacorr( n, ex, ec )
+        call cacorr( n, ex, ec, ux1, ux2, uc1, uc2 )
         val( j ) = n * ( ex + ec )
       enddo
 
       VR( i ) = ( 16.0d0 * ( val(-1) + val(1) ) - ( val(-2) + val(2) ) - 30.0d0 * val(0) ) & 
               / ( 12.0d0 * dn ** 2 )
+      if( myid .eq. root ) write(99,*) localDen, VR(i)
     enddo
     VR(:) = VR(:) * prefac
+    call MPI_ALLREDUCE( MPI_IN_PLACE, totalDen, 1, MPI_DOUBLE_PRECISION, MPI_SUM, comm, ierr )
+    totalDen = totalDen  / real(sys%nxpts, DP ) * sys%celvol
+    if( myid .eq. root ) write( 6,*) 'Total density: ', totalDen, totalDen2
+
+    if( myid .eq. root ) then
+      close(99)
+    endif
 
   end subroutine alda
 

@@ -96,7 +96,7 @@ module OCEAN_val_VR
     real(dp), parameter :: minusone = -1.0_dp
 
 
-    spin_prefac = 1.0_DP
+    spin_prefac = 2.0_DP
     minus_spin_prefac = - spin_prefac
     
     call OCEAN_psi_returnBandPad( psi_con_pad, ierr )
@@ -110,22 +110,22 @@ module OCEAN_val_VR
 
     do ik = 1, sys%nkpts
       call DGEMM( 'N', 'N', nxpts, nbv, nbc, one, re_con( 1, 1, ik, cspn ), nxpts_pad, &
-                  psi%valr( 1, ib, ik, psi_spn ), psi_con_pad, zero, re_a_mat, nxpts )
+                  psi%valr( 1, 1, ik, psi_spn ), psi_con_pad, zero, re_a_mat, nxpts )
       call DGEMM( 'N', 'N', nxpts, nbv, nbc, minusone, im_con( 1, 1, ik, cspn ), nxpts_pad, &
-                  psi%vali( 1, ib, ik, psi_spn ), psi_con_pad, one, re_a_mat, nxpts )
+                  psi%vali( 1, 1, ik, psi_spn ), psi_con_pad, one, re_a_mat, nxpts )
 
       call DGEMM( 'N', 'N', nxpts, nbv, nbc, one, re_con( 1, 1, ik, cspn ), nxpts_pad, &
-                        psi%vali( 1, ib, ik, psi_spn ), psi_con_pad, zero, im_a_mat, nxpts )
+                        psi%vali( 1, 1, ik, psi_spn ), psi_con_pad, zero, im_a_mat, nxpts )
       call DGEMM( 'N', 'N', nxpts, nbv, nbc, one, im_con( 1, 1, ik, cspn ), nxpts_pad, &
-                        psi%valr( 1, ib, ik, psi_spn ), psi_con_pad, one, im_a_mat, nxpts )
+                        psi%valr( 1, 1, ik, psi_spn ), psi_con_pad, one, im_a_mat, nxpts )
 
       do ib = 1, nbv
         ! valence bands are starred
         re_b_mat( : ) = re_b_mat( : ) + re_a_mat( :, ib ) * re_val( 1:nxpts, ib, ik, vspn ) &
-                      + im_a_mat( :, ib ) * im_val( :, ib, ik, vspn )
+                      + im_a_mat( :, ib ) * im_val( 1:nxpts, ib, ik, vspn )
 
         im_b_mat( : ) = im_b_mat( : ) + im_a_mat( :, ib ) * re_val( 1:nxpts, ib, ik, vspn ) &
-                      - re_a_mat( :, ib ) * im_val( :, ib, ik, vspn )
+                      - re_a_mat( :, ib ) * im_val( 1:nxpts, ib, ik, vspn )
       enddo
     enddo
       

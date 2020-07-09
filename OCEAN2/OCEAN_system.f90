@@ -477,7 +477,7 @@ module OCEAN_system
 
     integer :: ntot, nmatch, iter, i, start_band, num_bands, val_bands, val_flag,  &
                rixs_energy, rixs_pol
-    logical :: found, have_val, have_core, lflag, bflag
+    logical :: found, have_val, have_core, lflag, bflag, aldaf
     real(DP) :: tmp(3)
 
     ! These are optional so should be given defaults
@@ -595,6 +595,25 @@ module OCEAN_system
             bflag = .false.
           endif
 
+          inquire(file='aldaf', exist=aldaf )
+          if( aldaf ) then
+            open(unit=98,file="aldaf",form='formatted',status='old')
+            rewind(98)
+            read(98,*) val_flag
+            close(98)
+            if( val_flag .gt. 0 ) then
+              aldaf = .true.
+            else
+              aldaf = .false.
+            endif
+          endif
+
+          if( aldaf .and. lflag ) then
+            write(6,*) 'Both ladders and ALDA request! Not allowed. ALDA set to false'
+            aldaf = .false.
+          endif
+            
+
         endif
             
 
@@ -639,6 +658,8 @@ module OCEAN_system
       if( ierr .ne. MPI_SUCCESS ) goto 111
       call MPI_BCAST( bflag, 1, MPI_LOGICAL, root, comm, ierr )
       if( ierr .ne. MPI_SUCCESS ) goto 111
+      call MPI_BCAST( aldaf, 1, MPI_LOGICAL, root, comm, ierr )
+      if( ierr .ne. MPI_SUCCESS ) goto 111
 #endif
 
       !!!!
@@ -672,6 +693,7 @@ module OCEAN_system
       temp_cur_run%have_val = have_val
       temp_cur_run%lflag = lflag
       temp_cur_run%bflag = bflag
+      temp_cur_run%aldaf = aldaf
 
       temp_cur_run%rixs_energy = rixs_energy
       temp_cur_run%rixs_pol = rixs_pol

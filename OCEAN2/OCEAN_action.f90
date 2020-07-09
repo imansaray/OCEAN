@@ -31,6 +31,7 @@ module OCEAN_action
     use OCEAN_long_range
     use OCEAN_bubble, only : AI_bubble_act
     use OCEAN_ladder, only : OCEAN_ladder_act
+    use OCEAN_val_VR, only : OCEAN_val_VR_act
     use OCEAN_constants, only : Hartree2eV
 
     implicit none
@@ -224,6 +225,14 @@ module OCEAN_action
           call OCEAN_ladder_act( sys, psi, new_psi, ierr )
           if( ierr .ne. 0 ) return
 !          call OCEAN_energies_allow( sys, new_psi, ierr )
+          call OCEAN_tk_stop( tk_lr )
+        endif
+
+        if( sys%cur_run%aldaf ) then
+          ! For now re-use lr timing for alda
+          call OCEAN_tk_start( tk_lr )
+          call OCEAN_val_VR_act( sys, psi, new_psi, ierr )
+          if( ierr .ne. 0 ) return
           call OCEAN_tk_stop( tk_lr )
         endif
 
