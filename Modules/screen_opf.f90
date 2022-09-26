@@ -36,6 +36,7 @@ module screen_opf
             screen_opf_interpProjs, screen_opf_makeAMat, screen_opf_maxNproj, screen_opf_AltInterpProjs, &
             screen_opf_largestL, screen_opf_getRMax, screen_opf_interpPSProjs, screen_opf_interpSingleDelta
 
+  public :: screen_opf_getNrad, screen_opf_getRad
   public :: screen_opf_largestLMNproj
   
   contains
@@ -185,6 +186,58 @@ module screen_opf
     if( rmax .lt. 0.0_DP ) ierr = 1754273
   end subroutine screen_opf_getRMax
     
+  subroutine screen_opf_getNrad( zee, nr, ierr, itarg )
+    integer, intent( in ) :: zee
+    integer, intent( out ) :: nr
+    integer, intent( inout ) :: ierr
+    integer, intent( inout ), optional :: itarg
+    !
+    integer :: targ
+
+    nr = 0
+    if( present( itarg ) ) then
+      if( isRightTarg( zee, itarg ) ) then
+        targ = itarg
+      else
+        targ = getRightTarg( zee )
+      endif
+    else
+      targ = getRightTarg( zee )
+    endif
+
+    nr = FullTable( targ )%nrad
+
+    ! zero means something has gone horribly wrong
+    if( nr .eq. 0 ) ierr = 1754274
+  end subroutine screen_opf_getNrad
+
+  subroutine screen_opf_getRad( zee, rad, ierr, itarg )
+    integer, intent( in ) :: zee
+    real(DP), intent( out ) :: rad
+    integer, intent( inout ) :: ierr
+    integer, intent( inout ), optional :: itarg
+    !
+    integer :: targ
+
+    if( present( itarg ) ) then
+      if( isRightTarg( zee, itarg ) ) then
+        targ = itarg
+      else
+        targ = getRightTarg( zee )
+      endif
+    else
+      targ = getRightTarg( zee )
+    endif
+
+    
+    if( size(rad) .lt. size(FullTable( targ )%rad ) ) then
+      ierr = 1754275
+      return
+    endif
+
+    rad(:) = FullTable( targ )%rad(:)
+
+  end subroutine screen_opf_getRad
 
   subroutine screen_opf_lbounds( zee, lmin, lmax, ierr, itarg )
     integer, intent( in ) :: zee
