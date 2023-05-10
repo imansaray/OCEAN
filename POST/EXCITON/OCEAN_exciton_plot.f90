@@ -15,10 +15,10 @@ program OCEAN_exciton_plot
 
   real(DP), allocatable :: z_stripe( : ), xyz(:,:), atom_loc(:,:), cubeExciton(:,:,:)
   real(DP) :: qinb(3), avecs(3,3), su, k0(3), qvec(3), Rvec(3), xphs, yphs, zphs, twopi, tau(3), ur, ui, suTarg
-  real(DP) :: realSpaceBox(3), rsDelta, inverseA(3,3), temp1(3), distance(3), isoTarg, isoMin, isoMax, su2, isos(2,19)
+  real(DP) :: realSpaceBox(3), rsDelta, inverseA(3,3), temp1(3), distance(3), isoTarg, isoMin, isoMax, su2, isos(2,20), volume
 
   integer, allocatable :: ibeg(:,:)
-  integer :: Rmesh(3), kmesh(3), nband, nalpha, nkpts, NR, Riter, kiter, xmesh(3), nspn, ispin, ivh2
+  integer :: Rmesh(3), kmesh(3), nband, nalpha, nkpts, NR, Riter, kiter, xmesh(3), nspn, ispin, ivh2, ispn
   integer :: RmeshMin(3), RmeshMax(3)
   integer :: ikx, iky, ikz, iRx, iRy, iRz, NX, i, ix, x_count, xiter, iy, iz, izz, bloch_selector, icms, ivms, icml
   integer :: brange(4), u2size, u2start, Rshift(3), natom, kiter_break, Rstart(3), idum(3), ZNL(3)
@@ -26,6 +26,9 @@ program OCEAN_exciton_plot
   character(len=25) :: filname
   character(len=128) :: outname
   character(len=2), allocatable :: elname(:)
+  character(len=6) :: outputStyle
+  integer :: spectpnt, ierr
+  real(DP) :: rsMax, prefactor
 
   logical :: metal, legacy_ibeg, oldStyle, foundMax
 
@@ -45,18 +48,30 @@ program OCEAN_exciton_plot
   open(unit=99,file='exciton_plot.ipt',form='formatted',status='old')
   read(99,*) filname
   read(99,*) outname
-  read(99,*) oldStyle
-  if( oldStyle ) then
-    read(99,*) Rmesh(:)
-    read(99,*) Rstart(:)
-  else
-    read(99,*) atomTarg
-    read(99,*) realSpaceBox(:)
-    read(99,*) rsDelta
-    do i = 1, 3
-      xmeshOut(i) = 1+ realSpaceBox(i) / rsDelta
-    enddo
-  endif
+  read(99,*) outputStyle
+  read(99,*) atomTarg
+  oldStyle = .false.
+  select case( outputStyle )
+    case( 'radial' )
+      read(99,*) rsDelta, rsMax, spectpnt
+      realSpaceBox(:) = 2.0_DP * rsMax
+      do i = 1, 3
+        xmeshOut(i) = 1+ realSpaceBox(i) / rsDelta
+      enddo
+    case( 'box' )
+      read(99,*) realSpaceBox(:)
+      read(99,*) rsDelta
+      do i = 1, 3
+        xmeshOut(i) = 1+ realSpaceBox(i) / rsDelta
+      enddo
+    case( 'old' )
+      oldStyle = .true.
+      read(99,*) Rmesh(:)
+      read(99,*) Rstart(:)
+    case default
+      write(6,*) 'Unrecognized output style', outputStyle
+      stop
+  end select
 !  read(99,*) tau(:)
   close(99)
   tau(:) = 0.0_dp
@@ -100,7 +115,7 @@ program OCEAN_exciton_plot
   read(99,*) avecs(:,:)
   close(99)
 
-  call invA( avecs, inverseA )
+  call invA( avecs, inverseA, volume )
 
   open(unit=99,file='xyz.wyck',form='formatted',status='old')
   read(99,*) natom
@@ -491,9 +506,10 @@ program OCEAN_exciton_plot
   
 !  outname = trim(filname)//'.cube'
   open(unit=99,file=outname,form='formatted')
-  write(99,*) "OCEAN exciton plot"
-  write(99,*) "---"
-  if( .not. oldStyle ) then
+  select case ( outputStyle )
+  case( 'box' )
+    write(99,*) "OCEAN exciton plot"
+    write(99,*) "---"
     natom2 = 0
     do iRx = Rstart(1), Rstart(1) + Rmesh(1) - 1
       do iRy = Rstart(2), Rstart(2) + Rmesh(2) - 1
@@ -678,7 +694,9 @@ program OCEAN_exciton_plot
     enddo
     deallocate( cubeExciton )
 
-  else
+  case( 'old' )
+  write(99,*) "OCEAN exciton plot"
+  write(99,*) "---"
   write(99,'(I5,3(F12.6))') natom*product(Rmesh(:)), 0.0_dp, 0.0_dp, 0.0_dp
   do ix = 1, 3
     x_count = Rmesh( ix ) * xmesh( ix )
@@ -786,8 +804,27 @@ program OCEAN_exciton_plot
 
 
   end select
-  
-  endif
+
+  case ('radial')
+!   Need to normalize
+    allocate(z_Stripe(0))
+    su = 0.0_DP
+    do ispn = 1, nspn
+      do ixx = 1, xmesh(1)*Rmesh(1)
+        do iyy = 1, xmesh(2)*Rmesh(2)
+          su = su + dot_product( Rspace_exciton(:,iyy,ixx,ispn), Rspace_exciton(:,iyy,ixx,ispn) ) !* volume / real(product( xmesh(:) ), DP )
+        enddo
+      enddo
+    enddo
+    write(6,*) 'Inegrated exciton: ', su
+!    su = su * volume / real(product( xmesh(:) ), DP )
+!    su = su / real(product( xmesh(:) ), DP )
+    su = 1.0_DP / sqrt( su )
+    Rspace_exciton(:,:,:,:) = Rspace_exciton(:,:,:,:) * su
+    call radial_exciton( 99, rsDelta, rsMax, spectpnt, atom_loc(:, atomTarg ), inverseA, &
+                         xmesh, Rstart, Rmesh, nspn, Rspace_exciton )  
+
+  end select
   close( 99 )
 
   deallocate( Rspace_exciton, z_stripe, ibeg )
@@ -796,10 +833,10 @@ program OCEAN_exciton_plot
   111 continue
 
   contains
-  subroutine invA( a, b )
+  subroutine invA( a, b, det )
     real(DP), intent( in ) :: a(3,3)
     real(DP), intent( out ) :: b(3,3)
-    real(DP) :: det
+    real(DP), intent( out ) :: det
 
     det = a(1,1) * ( a(2,2) * a(3,3) - a(3,2) * a(2,3) ) &
         - a(1,2) * ( a(2,1) * a(3,3) - a(2,3) * a(3,1) ) &
