@@ -1,0 +1,40 @@
+para_prefix{ mpirun -n 8 --mca btl_tcp_if_include lo  }
+
+ngkpt -8
+bse.kmesh -10.1
+bse.xmesh -1.5
+
+bse.core.gmres.elist  -0.35
+bse.core.solver gmres
+
+dft qe
+
+acell { 4.731855257139000 4.731855257139000 12.587843497320000 }
+rprim {
+0.866025403784439 -0.5 0.0
+0.0 1.0 0.0
+0.0 0.0 1.0
+}
+ntypat 2 
+znucl { 5 7 }
+natom 24
+typat { 1 1 2 2  }
+xred {  
+     0.33333333333333     0.66666666666667     0.7500000000
+     0.66666666666667     0.33333333333333     0.2500000000
+     0.33333333333333     0.66666666666667     0.2500000000
+     0.66666666666667     0.33333333333333     0.7500000000
+}
+      
+diemac 8
+
+nedges 1
+edges{ -7 1 0 }
+
+# radius for shell for screening
+screen.shells{ 4.0 5.0 6.0}
+cnbse.rad{ 5.0 }
+
+#Scaling Factor
+scfac 0.85
+cnbse.broaden 0.19

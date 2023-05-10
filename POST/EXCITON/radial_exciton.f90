@@ -15,7 +15,7 @@ subroutine radial_exciton( iunit, rsDelta, rsMax, specpnt, targ_loc, inverseA, x
 
   real(DP), allocatable :: wgt(:), ang(:,:)
   integer :: nang, iang, nr, ir, xtarg(3), ixx, ixxx, iyy, iyyy, ispn
-  real(DP) :: su, rs, rvec(3), temp1(3), distance(3)
+  real(DP) :: su, rs, rvec(3), temp1(3), distance(3), su2
   complex(DP) :: Pgrid(4), P(4,4), Qgrid(4), Q(4), R
   character(len=10) :: spectFileName
 
@@ -37,6 +37,7 @@ subroutine radial_exciton( iunit, rsDelta, rsMax, specpnt, targ_loc, inverseA, x
 
   nr = ( (rsMax - rsDelta) / rsDelta ) + 1
 
+  su2 = 0.0_DP
   do ir = 1, nr
     rs = real( ir, DP ) * rsDelta
     su = 0.0_DP
@@ -74,7 +75,8 @@ subroutine radial_exciton( iunit, rsDelta, rsMax, specpnt, targ_loc, inverseA, x
         su = su + (R * conjg(R) ) * wgt( iang )
       enddo
     enddo
-    write(99,*) rs, su
+    su2 = su2 + su * rsDelta
+    write(99,*) rs, su, su2
   enddo
 
   

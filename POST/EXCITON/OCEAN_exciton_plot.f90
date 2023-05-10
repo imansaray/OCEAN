@@ -817,7 +817,7 @@ program OCEAN_exciton_plot
       enddo
     enddo
     write(6,*) 'Inegrated exciton: ', su
-!    su = su * volume / real(product( xmesh(:) ), DP )
+    su = su * volume / real(product( xmesh(:) ), DP )
 !    su = su / real(product( xmesh(:) ), DP )
     su = 1.0_DP / sqrt( su )
     Rspace_exciton(:,:,:,:) = Rspace_exciton(:,:,:,:) * su
