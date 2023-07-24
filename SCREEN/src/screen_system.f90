@@ -53,6 +53,7 @@ module screen_system
     character(len=3) :: appx
     logical :: doFXC = .false.
     logical :: allAug = .false.
+    logical :: double_shell = .false.
   end type calculation_parameters
 
   type( physical_system ), save :: psys
@@ -160,6 +161,11 @@ module screen_system
   pure function screen_system_allAug() result ( aa )
     logical :: aa
     aa = calcParams%allAug
+  end function
+
+  pure function screen_system_doubleShell() result ( ds )
+    logical :: ds
+    ds = calcParams%double_shell
   end function
 
   pure function screen_system_natoms() result( n )
@@ -357,6 +363,9 @@ module screen_system
 
     call MPI_BCAST( calcParams%allAug, 1, MPI_LOGICAL, root, comm, ierr )
     if( ierr .ne. MPI_SUCCESS ) return
+
+    call MPI_BCAST( calcParams%double_shell, 1, MPI_LOGICAL, root, comm, ierr )
+    if( ierr .ne. MPI_SUCCESS ) return
 #endif
   end subroutine share_calcParams
 
@@ -510,6 +519,18 @@ module screen_system
       endif
     endif
     if( calcParams%allAug ) write( 6, * ) 'Augmenting all atomic sites!'
+
+    calcParams%double_shell = .false.
+    inquire( file='screen.doubleshell', exist=ex )
+    if( ex ) then
+      open( unit=99, file='screen.doubleshell', form='formatted', status='old' )
+      read( 99, *, IOSTAT=ignoreErrors ) calcParams%double_shell
+      close( 99 )
+      if( ignoreErrors .ne. 0 ) then
+        write(6,*) 'Error reading screen.double_shell ', ignoreErrors
+      endif
+    endif
+    if( calcParams%double_shell ) write( 6, * ) 'Using double shell method for model'
 
     inquire( file='screen.convertstyle', exist=ex )
     if( ex ) then

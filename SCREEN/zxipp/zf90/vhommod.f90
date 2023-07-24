@@ -10,7 +10,7 @@ program vhommod
   integer, parameter :: stdin = 5, stdout = 6
   integer, parameter :: dp = kind( 1.0d0 )
   !
-  integer :: i, j, k, nr, nq, idum, nshells, nsites, isite, ierr, xmesh( 3 )
+  integer :: i, j, k, nr, nq, idum, nshells, nsites, isite, ierr, xmesh( 3 ), ids
   integer, allocatable :: siteIndex( : )
   real( kind=dp ) :: epsq0, qf, wpsqd, wf, lam, pi, eps
   real( kind=dp ) :: qq, q, dq, qmax, r1, r2, dr, rmax
@@ -27,7 +27,7 @@ program vhommod
   !
   real( kind=dp ), external :: levlou, sphj0, sphj1
   !
-  logical :: havenav, valenceGrid, thickShell, ex
+  logical :: havenav, valenceGrid, thickShell, ex, doubleShell, solidShell
   character(len=80) :: dummy
   character(len=1), parameter :: delim_ = '/'
   !
@@ -36,14 +36,32 @@ program vhommod
 !  read ( stdin, * ) r2 !, dr, nr
 !  read ( stdin, * ) dq, qmax   ! dq and qmax in units of qfermi
   !
+  inquire(file='screen.doubleshell', exist=doubleShell )
+  if( doubleShell ) then
+    open(unit=99, file='screen.doubleshell', form='formatted', status='old' )
+    read( 99, * ) doubleShell
+    close(99)
+  endif
+  if( doubleShell ) then
+    ids = 2
+  else
+    ids = 1
+  endif
+
   open( unit=99, file='shells', form='formatted', status='old' )
   rewind 99
   read( 99, * ) nshells
-  allocate( shells( nshells ) )
+  allocate( shells( nshells * ids ) )
   do i = 1, nshells
     read( 99, * ) shells( i )
   enddo
   close( 99 )
+
+  if( doubleShell ) then
+    do i = 1, nshells
+      shells( i + nshells ) = 4.0_DP * shells( i ) / 5.0_dp
+    enddo
+  endif
 
   inquire(file='screen.mode', exist=valenceGrid )
   if( valenceGrid ) then
@@ -68,6 +86,17 @@ program vhommod
       thickShell = .false.
     endif
   endif
+
+  if( delta .lt. 0.000001_dp ) then
+    inquire( file='screen.solidshell', exist=solidShell )
+    if( solidShell ) then
+      open(99,file='screen.solidshell', form='formatted', status='old' )
+      read( 99, * ) solidShell
+      close(99)
+    endif
+  endif
+
+
 
   if( valenceGrid ) then
     open( unit=99, file='xmesh.ipt', form='formatted', status='old' )
@@ -126,7 +155,7 @@ program vhommod
   endif
   !
 !  read ( stdin, * ) epsq0 
-  allocate( v( nr, nshells ), vh( nr, nshells ), dv( nr ) )
+  allocate( v( nr, nshells * ids ), vh( nr, nshells * ids ), dv( nr ) )
   !
   qf = ( 3 * pi ** 2 * nav ) ** ( 1.d0 / 3.d0 )
   wpsqd = 4 * pi * nav
@@ -135,14 +164,21 @@ program vhommod
   !
   nq = qmax / dq
   dq = qf * dq
-  allocate( tab1( nr, nq ), bq( nq ), tabjqr2( nq, nshells ) )
+  allocate( tab1( nr, nq ), bq( nq ), tabjqr2( nq, nshells * ids ) )
   !
   if( thickShell ) then
     d2 = delta * delta
     d3 = delta * d2
-    do k = 1, nshells
+    do k = 1, nshells * ids
       r2 = shells( k )
       rd3 = ( r2 + delta ) ** 3
+      if( solidShell ) then
+        delta = shells( k ) / 2.0_DP
+        r2 = shells( k ) / 2.0_DP
+        d2 = delta * delta
+        d3 = d2 * delta
+        rd3 = shells( k ) ** 3
+      endif
       do i = 1, nq
         q = dq * ( i - 0.5d0 )
         cosqd = cos( q * delta )
@@ -169,7 +205,7 @@ program vhommod
       enddo
     enddo
   else
-    do k = 1, nshells
+    do k = 1, nshells * ids
       r2 = shells( k )
       do i = 1, nq
         q = dq * ( i - 0.5d0 )
@@ -179,7 +215,7 @@ program vhommod
   endif
   !
   v( :, : ) = 0
-  do k = 1, nshells
+  do k = 1, nshells * ids
     r2 = shells( k )
     do i = 1, nq
        q = dq * ( i - 0.5d0 )
@@ -244,11 +280,24 @@ program vhommod
         stop 'jive!'
       endif
 
-      do k = 1, nshells
+      do k = 1, nshells * ids
         r2 = shells( k ) + delta
+        if( solidShell ) then
+          delta = shells( k ) / 2.0_DP
+          r2 = shells( k ) 
+        endif 
         th2 = 0
         if( s .gt. r2 ) then
           th2 = 1.0_DP
+!!!! FIX HERE FOR SOLID
+        elseif( solidShell ) then
+          r2 = shells( k ) / 2.0_DP
+          th2 = 3.0_DP * r2**2 + 12.0_DP * r2 * delta + 5.0_DP * delta**2
+          th2 = 3.0_DP * ( r2 + delta ) * th2
+          th2 = th2 - 2.0_DP * s * ( r2 + 3.0_DP * delta ) * ( 7.0_DP * r2 + 5.0_DP * delta )
+          th2 = th2 + 5.0_DP * s**2 * ( r2 + 3.0_DP * delta )
+          th2 = th2 * s**2 * ( s + delta - r2 )**2
+          th2 = th2 / ( 16.0_DP * r2 * delta**3 * (r2 + delta )**3 )
         elseif( thickShell .and. ( s .gt. (shells(k) - delta ) ) ) then
           th2 = 3.0_DP * r2**2 + 12.0_DP * r2 * delta + 5.0_DP * delta**2 
           th2 = 3.0_DP * ( r2 + delta ) * th2
@@ -304,7 +353,13 @@ program vhommod
       rewind( 99 )
       r1 = dr / 2
       do j = 1, nr
-        write ( 99, '(3(1x,1e15.8))' ) r1, vh( j, k ), v( j, k )
+        if( doubleShell ) then
+          write ( 99, '(7(1x,1e15.8))' ) r1, 5.0_dp * vh( j, k ) - 4.0_dp*vh( j, k + nshells ), &
+                                             5.0_dp*v( j, k )- 4.0_dp*v( j, k + nshells ), &
+              vh( j, k ), vh( j, k + nshells ), v( j, k ), v( j, k + nshells )
+        else
+          write ( 99, '(3(1x,1e15.8))' ) r1, vh( j, k ), v( j, k )
+        endif
         r1 = r1 + dr
       end do
       close( unit=99 )

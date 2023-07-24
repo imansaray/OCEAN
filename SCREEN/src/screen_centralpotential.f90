@@ -334,23 +334,38 @@ module screen_centralPotential
     ierr = 1
   end subroutine screen_centralPotential_prepAll
 
-  subroutine screen_centralPotential_newScreenShell( pot, newPot, rad, ierr, width )
+! Need to add options to do other things with the screening
+! 1. plain shell
+! 2. shell with width
+! 3. double shell method to give 0 potential inside R/2
+  subroutine screen_centralPotential_newScreenShell( pot, newPot, rad, ierr, width, double_shell )
     type( potential ), intent( in ) :: pot
     type( potential ), intent( out ) :: newPot
     real(DP), intent( in ) :: rad
     integer, intent( inout ) :: ierr
     real(DP), intent( in ), optional :: width
+    logical, intent( in ), optional :: double_shell
 
     integer :: i
     real(DP) :: invRad, ww, denom, f3, f4, f5, x
+    logical :: do_double_shell
 !#ifdef DEBUG
-    character(len=10) :: filename
+    character(len=11) :: filename
 !#endif
   
     if( present( width ) ) then
       ww = width
       if( ww .lt. 0.0 ) ww = 0.0_DP
     else
+      ww = 0.0_DP
+    endif
+
+    if( present( double_shell ) ) then
+      do_double_shell = double_shell
+    else
+      do_double_shell = .false.
+    endif
+    if( do_double_shell ) then
       ww = 0.0_DP
     endif
 
@@ -380,6 +395,18 @@ module screen_centralPotential
       f5 = 0.0_DP
     endif
     
+    if( do_double_shell ) then
+      do i = 1, size( pot%pot )
+        if( newPot%rad( i ) .lt. ( 4.0_dp * rad / 5.0_dp ) ) then
+          newPot%pot( i ) = pot%pot( i )
+        elseif( newPot%rad( i ) .le. rad ) then
+          newPot%pot( i ) = pot%pot( i ) + 5.0_dp * invrad - 4.0_dp / newPot%rad( i )
+        else
+          newPot%pot( i : size( newPot%pot ) ) = 0.0_DP
+          exit
+        endif
+      enddo
+    else
     do i = 1, size( pot%pot ) 
       if( newPot%rad( i ) .lt. rad - ww) then
         newPot%pot( i ) = pot%pot( i ) + invRad
@@ -395,10 +422,15 @@ module screen_centralPotential
         exit
       endif
     enddo
+    endif
 
 #ifdef DEBUG
     write(6,*) 'newScreenShell', rad, newPot%rad( size( newPot%rad ) )
-    write(filename,'(A,F4.2)') 'vpert.', rad
+    if( rad .le. 9.99) then
+      write(filename,'(A,F4.2)') 'vpert.', rad
+    else
+      write(filename,'(A,F5.2)') 'vpert.', rad
+    endif
     open(unit=99,file=filename, form='formatted' )
     do i = 1, size( pot%pot ) 
       write(99,* ) newPot%rad( i ), newPot%pot( i ), pot%pot( i )

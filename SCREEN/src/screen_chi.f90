@@ -93,7 +93,7 @@ module screen_chi
 
       do iShell = 1, nShell
       
-        call screen_centralPotential_newScreenShell( temp_Pots, Pot, mySite%shells( iShell ), ierr )
+        call screen_centralPotential_newScreenShell( temp_Pots, Pot, mySite%shells( iShell ), ierr, double_shell = .true. )
         if( ierr .ne. 0 ) return
 
         Prefix = screen_chi_getOutputPrefix( mySite%info%elname, mySite%info%indx, Pot%N, Pot%L, &
