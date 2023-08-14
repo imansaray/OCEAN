@@ -5,6 +5,7 @@ include ../../Makefile.arch
 #OPTIONS += -march=haswell -prec-div -prec-sqrt
 #OPTIONS += -check all -g -traceback
 #OPTIONS += -qopenmp
+OPTIONS += -DDEBUG
 
 all: screen_driver.x
 

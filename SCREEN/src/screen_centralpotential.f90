@@ -345,10 +345,11 @@ module screen_centralPotential
     integer, intent( inout ) :: ierr
     real(DP), intent( in ), optional :: width
     logical, intent( in ), optional :: double_shell
+    logical, intent( in ), optional :: sawtooth
 
     integer :: i
     real(DP) :: invRad, ww, denom, f3, f4, f5, x
-    logical :: do_double_shell
+    logical :: do_double_shell, do_sawtooth
 !#ifdef DEBUG
     character(len=11) :: filename
 !#endif
@@ -366,6 +367,16 @@ module screen_centralPotential
       do_double_shell = .false.
     endif
     if( do_double_shell ) then
+      ww = 0.0_DP
+    endif
+
+    if( present( sawtooth ) ) then
+      do_sawtooth = sawtooth
+    else 
+      do_sawtooth = .false.
+    endif
+    if( do_sawtooth ) then
+      do_double_shell = .false.
       ww = 0.0_DP
     endif
 
@@ -406,6 +417,88 @@ module screen_centralPotential
           exit
         endif
       enddo
+    elseif( do_sawtooth ) then
+      if( rad .le. 2.0_DP ) then
+        alpha = 0.0_DP
+        beta = rad / 3.0_DP
+        gamm = 2.0_DP * rad / 3.0_DP
+        delta = rad
+      else
+        alpha = rad - 2.0_DP
+        beta = alpha + 2.0_DP/3.0_DP
+        gamm = alpha + 4.0_DP/3.0_DP
+        delta = rad
+      endif
+          aaa = -(1.0_DP/6.0_DP)*(-beta**3 + 3*beta*gamm**2 - (-3 + gamm)*gamm**2 - 3*(1 + gamm)*delta**2 + &
+          2*delta**3)/ &
+        (((-alpha**4 + 4*alpha*beta**3 - 2*(-2 + beta)*beta**3 - 4*(1 + beta)*gamm**3 + 3*gamm**4)* &
+             (beta**3 - 3*beta*gamm**2 + (-3 + gamm)*gamm**2 + 3*(1 + gamm)*delta**2 - 2*delta**3))/72. - &
+          ((-alpha**3 + 3*alpha*beta**2 - (-3 + beta)*beta**2 - 3*(1 + beta)*gamm**2 + 2*gamm**3)* &
+             (beta**4 - 4*beta*gamm**3 + 2*(-2 + gamm)*gamm**3 + 4*(1 + gamm)*delta**3 - 3*delta**4))/72.)
+    bbb = (-12.0_DP*(alpha**3 - 3.0_DP*beta**2 - 3.0_DP*alpha*beta**2 + beta**3 &
+                            + 3.0_DP*gamm**2 + 3.0_DP*beta*gamm**2 - 2.0_DP*gamm**3))/ &
+               (alpha**4*beta**3 - alpha**3*beta**4 - beta**6 - alpha*beta**6 + beta**7 &
+                - 3.0_DP*alpha**4*gamm**2 - 3.0_DP*alpha**4*beta*gamm**2  &
+                + 12.0_DP*beta**3*gamm**2 + 12.0_DP*alpha*beta**3*gamm**2 + 3.0_DP*beta**4*gamm**2 &
+                + 12.0_DP*alpha*beta**4*gamm**2 - 9.0_DP*beta**5*gamm**2 + 4.0_DP*alpha**3*gamm**3 &
+                + alpha**4*gamm**3 + 4.0_DP*alpha**3*beta*gamm**3 - 12.0_DP*beta**2*gamm**3 &
+                - 12.0_DP*alpha*beta**2*gamm**3 - 8.0_DP*beta**3*gamm**3 &
+                - 16.0_DP*alpha*beta**3*gamm**3 + 12.0_DP*beta**4*gamm**3 - 2.0_DP*alpha**3*gamm**4 &
+                + 6.0_DP*beta**2*gamm**4 + 6.0_DP*alpha*beta**2*gamm**4 - 5.0_DP*beta**3*gamm**4 &
+                - gamm**6 - beta*gamm**6 + gamm**7 + 3.0_DP*alpha**4*delta**2 &
+                - 12.0_DP*beta**3*delta**2 - 12.0_DP*alpha*beta**3*delta**2 &
+                + 6.0_DP*beta**4*delta**2 + 3.0_DP*alpha**4*gamm*delta**2 &
+                - 12.0_DP*beta**3*gamm*delta**2 - 12.0_DP*alpha*beta**3*gamm*delta**2 &
+                + 6.0_DP*beta**4*gamm*delta**2 + 12.0_DP*gamm**3*delta**2 &
+                + 12.0_DP*beta*gamm**3*delta**2 + 3.0_DP*gamm**4*delta**2 &
+                + 12.0_DP*beta*gamm**4*delta**2 - 9.0_DP*gamm**5*delta**2 - 4.0_DP*alpha**3*delta**3 &
+                - 2.0_DP*alpha**4*delta**3 + 12.0_DP*beta**2*delta**3 &
+                + 12.0_DP*alpha*beta**2*delta**3 + 4.0_DP*beta**3*delta**3 &
+                + 8.0_DP*alpha*beta**3*delta**3 - 4.0_DP*beta**4*delta**3 &
+                - 4.0_DP*alpha**3*gamm*delta**3 + 12.0_DP*beta**2*gamm*delta**3 &
+                + 12.0_DP*alpha*beta**2*gamm*delta**3 - 4.0_DP*beta**3*gamm*delta**3 &
+                - 12.0_DP*gamm**2*delta**3 - 12.0_DP*beta*gamm**2*delta**3 &
+                - 12_DP*gamm**3*delta**3 - 20.0_DP*beta*gamm**3*delta**3 + 14.0_DP*gamm**4*delta**3 &
+                + 3.0_DP*alpha**3*delta**4 - 9.0_DP*beta**2*delta**4 - 9.0_DP*alpha*beta**2*delta**4 &
+                + 3.0_DP*beta**3*delta**4 + 9.0_DP*gamm**2*delta**4 + 9.0_DP*beta*gamm**2*delta**4 &
+                - 6.0_DP*gamm**3*delta**4)
+
+      do i = 1, size( pot%pot )
+        if( newPot%rad( i ) .le. alpha ) then
+          newPot%pot( i ) = pot%pot( i )
+        elseif( newPot%rad( i ) .le. beta ) then
+          newPot%pot( i ) = pot%pot( i ) &
+                          - (1.0_D_*/(12.0_DP*newPot%rad( i ))) * &
+                            ( aaa*( newPot%rad( i )**4 - 2.0_DP*newPot%rad( i )**3*alpha &
+                                  - 2.0_DP*newPot%rad( i )*beta**2*(-3.0_DP-3.0_dp*alpha*beta) &
+                                  + 6.0_DP*newPot%rad( i )*(1.0_DP+beta)*gamm**2 &
+                                  + 4.0_DP * newPot%rad( i ) * gamm**3 )
+                            + 2.0_DP*bbb*newPot%rad( i )* ( beta**3 - 3.0_DP*beta*gamm**2 &
+                                  +(gamm-3.0_DP)*gamm**2 + 3.0_DP*(1.0_DP*gamm)*delta**2  &
+                                  - 2.0_dp * delta**3 ) )
+        elseif( newPot%rad( i ) .le. gamm ) then
+          newPot%pot( i ) = pot%pot( i ) &
+                    - (-(aaa*(x**4 + alpha**4 - 2.0_DP*newPot%rad( i )**3*(1.0_DP + beta) &
+                        + 2.0_DP*beta**3*(-2.0_dp - 2.0_DP*alpha + beta) +  &
+                        2.0_DP*newPot%rad( i )*(3.0_DP + 3.0_DP*beta - 2.0_DP*gamm)*gamm**2)) + &
+                   bbb*(-newPot%rad( i )**4 + 2.0*newPot%rad( i )**3*beta + beta**4 +  &
+                      2.0_DP*newPot%rad( i )*(gamm**2*(-3.0_DP - 3.0_DP*beta + gamm) + &
+                      3.0_DP*(1.0_DP + gamm)*delta**2 - 2.0D_*delta**3)))/(12.0_DP*newPot%rad( i ))
+        elseif( newPot%rad( i ) .lt. delta ) then
+          newPot%pot( i ) = pot%pot( i ) & 
+            -(-(aaa*(alpha**4 - 4.0_DP*alpha*beta**3 + 2.0_DP*(-2.0_DP + beta)*beta**3 &
+                    + 4.0_DP*(1.0_DP + beta)*gamm**3 - 3.0_DP*gamm**4)) + &
+                     bbb*(newPot%rad( i )**4 + beta**4 - 2.0_DP*newPot%rad( i )**3*(1.0_DP + gamm) &
+                          + 2.0_DP*gamm**3*(-2.0_DP - 2.0_DP*beta + gamm) + &
+                        2.0_DP*newPot%rad( i )*(3.0_DP + 3.0_DP*gamm - 2.0_DP*delta)*delta**2)) &
+                /(12.0_DP*newPot%rad( i ))
+                                    
+        else                        
+          newPot%pot( i : size( newPot%pot ) ) = 0.0_DP 
+          exit
+        endif
+      enddo        
+
     else
     do i = 1, size( pot%pot ) 
       if( newPot%rad( i ) .lt. rad - ww) then
